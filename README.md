@@ -1,6 +1,9 @@
 # 🛰️ Satellite Tracker
 
-Živé sledování satelitů v reálném čase 
+Živé sledování satelitů v reálném čase — inspirováno [satellite-tracer.vercel.app](https://satellite-tracer.vercel.app/).
+Čistě statická webová aplikace (HTML + CSS + vanilla JS), takže ji stačí nahrát na GitHub a hostovat
+zdarma přes **GitHub Pages** — žádný build krok, žádný server není potřeba.
+
 ![preview](https://img.shields.io/badge/status-demo-4fd1ff)
 
 ## ✨ Co appka umí
@@ -91,7 +94,7 @@ Tohle samé dělá automaticky přiložený GitHub Actions workflow každých 6 
 
 | Účel                  | Technologie / zdroj |
 |-----------------------|----------------------|
-| Mapa                  | [Leaflet](https://leafletjs.com) + [CARTO dark tiles](https://carto.com/) |
+| Mapa                  | [Leaflet](https://leafletjs.com) + [Esri World Dark Gray Base](https://www.arcgis.com/home/item.html?id=0eeb00cd230e4118b595b4ac1fd9d07a) (zdarma, bez API klíče) |
 | Orbitální propagace   | [satellite.js](https://github.com/shashwatak/satellite-js) (SGP4/SDP4) |
 | TLE data              | [CelesTrak](https://celestrak.org) (veřejné, zdarma) |
 | Hosting               | GitHub Pages (statický, zdarma) |
@@ -101,3 +104,8 @@ Tohle samé dělá automaticky přiložený GitHub Actions workflow každých 6 
 - CelesTrak žádá, aby se jeho GP API nedotazovalo příliš často (data se mění jen několikrát denně) —
   proto workflow běží jen jednou za 6 hodin, ne v reálném čase z prohlížeče.
 - Aplikace je čistě klientská (žádný backend, žádné API klíče, žádné poplatky).
+- **Podkladová mapa**: od konce srpna 2026 vyžaduje CARTO (`basemaps.cartocdn.com`) API klíč pro
+  své dlaždice, jinak zobrazuje vodoznak „API KEY REQUIRED". Appka proto místo toho používá
+  **Esri World Dark Gray Base** (`server.arcgisonline.com`), který je zdarma a bez klíče. Pokud by
+  se v budoucnu i toto omezilo, stačí v `js/app.js` (funkce nastavující `L.tileLayer(...)`) URL
+  vyměnit za jiného keyless poskytovatele, např. standardní `tile.openstreetmap.org` (světlý styl).
