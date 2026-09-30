@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta name="theme-color" content="#030712">
+
+    <title>Satellite Tracker</title>
+
+    <!-- 3D glóbus -->
+    <script src="https://cdn.jsdelivr.net/npm/globe.gl/"/script>
+
+    <style>
+        :root {
+            --background: #020617;
+            --panel: rgba(8, 17, 36, 0.9);
+            --panel-light: rgba(18, 35, 66, 0.82);
+            --border: rgba(148, 163, 184, 0.22);
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --primary: #38bdf8;
+            --primary-dark: #0284c7;
+            --green: #4ade80;
+            --yellow: #facc15;
+            --red: #fb7185;
+            --shadow: 0 22px 50px rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            color: var(--text);
+            background: var(--background);
+            font-family:
+                Inter,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+        button {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* =========================================================
+           GLOBE
+           ========================================================= */
+
+        #globe {
+            position: fixed;
+            inset: 0;
+        }
+
+        #globe canvas {
+            display: block;
+        }
+
+        /* =========================================================
+           HORNÍ LIŠTA
+           ========================================================= */
+
+        .topbar {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            pointer-events: none;
+        }
+
+        .brand,
+        .time-panel {
+            pointer-events: auto;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            min-height: 62px;
+            padding: 10px 17px;
+            border-radius: 17px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 13px;
+            font-size: 21px;
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(56, 189, 248, 0.3),
+                    rgba(74, 222, 128, 0.16)
+                );
+            border: 1px solid rgba(56, 189, 248, 0.28);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0.2px;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .time-panel {
+            padding: 11px 15px;
+            border-radius: 15px;
+            text-align: right;
+        }
+
+        .time-label {
+            margin-bottom: 3px;
+            color: var(--muted);
+            font-size: 10px;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+        }
+
+        .utc-time {
+            font-size: 14px;
+            font-weight: 750;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* =========================================================
+           BOČNÍ PANEL
+           ========================================================= */
+
+        .sidebar {
+            position: fixed;
+            top: 94px;
+            left: 16px;
+            bottom: 72px;
+            z-index: 20;
+            width: min(360px, calc(100% - 32px));
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+        }
+
+        .sidebar-header {
+            padding: 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 13px;
+        }
+
+        .sidebar-title {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .satellite-count {
+            padding: 5px 9px;
+            border-radius: 999px;
+            color: var(--primary);
+            background: rgba(56, 189, 248, 0.12);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-icon {
+            position: absolute;
+            top: 50%;
+            left: 13px;
+            color: var(--muted);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            min-height: 43px;
+            padding: 10px 12px 10px 39px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: white;
+            background: rgba(15, 29, 54, 0.75);
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: #74829a;
+        }
+
+        .search-input:focus {
+            border-color: rgba(56, 189, 248, 0.75);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .satellite-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .satellite-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .satellite-list::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.25);
+        }
+
+        .satellite-item {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 38px 1fr auto;
+            align-items: center;
+            gap: 10px;
+            padding: 11px;
+            margin-bottom: 7px;
+            border: 1px solid transparent;
+            border-radius: 13px;
+            color: var(--text);
+            text-align: left;
+            background: transparent;
+            cursor: pointer;
+            transition: 0.18s ease;
+        }
+
+        .satellite-item:hover {
+            border-color: var(--border);
+            background: var(--panel-light);
+        }
+
+        .satellite-item.active {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(56, 189, 248, 0.13);
+        }
+
+        .satellite-item-icon {
+            width: 38px;
+            height: 38px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            background: rgba(56, 189, 248, 0.11);
+        }
+
+        .satellite-name {
+            overflow: hidden;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 750;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .satellite-meta {
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        .satellite-altitude {
+            color: var(--green);
+            font-size: 11px;
+            font-weight: 750;
+            white-space: nowrap;
+        }
+
+        /* =========================================================
+           DETAIL SATELITU
+           ========================================================= */
+
+        .detail-panel {
+            position: fixed;
+            top: 94px;
+            right: 16px;
+            z-index: 20;
+            width: min(335px, calc(100% - 32px));
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            transition:
+                opacity 0.23s ease,
+                transform 0.23s ease;
+        }
+
+        .detail-panel.closed {
+            opacity: 0;
+            transform: translateX(30px);
+            pointer-events: none;
+        }
+
+        .detail-header {
+            position: relative;
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(56, 189, 248, 0.16),
+                    rgba(74, 222, 128, 0.08)
+                );
+        }
+
+        .close-button {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--muted);
+            background: rgba(4, 12, 27, 0.55);
+            cursor: pointer;
+        }
+
+        .close-button:hover {
+            color: white;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .detail-icon {
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 13px;
+            border-radius: 15px;
+            font-size: 24px;
+            background: rgba(56, 189, 248, 0.13);
+            border: 1px solid rgba(56, 189, 248, 0.22);
+        }
+
+        .detail-name {
+            max-width: calc(100% - 40px);
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.25;
+        }
+
+        .detail-id {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .detail-body {
+            padding: 17px;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+
+        .data-card {
+            min-height: 77px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            background: rgba(15, 29, 54, 0.58);
+        }
+
+        .data-label {
+            margin-bottom: 6px;
+            color: var(--muted);
+            font-size: 10px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            font-size: 14px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .focus-button {
+            width: 100%;
+            min-height: 43px;
+            margin-top: 13px;
+            border: none;
+            border-radius: 11px;
+            color: #02202f;
+            background:
+                linear-gradient(
+                    135deg,
+                    #38bdf8,
+                    #67e8f9
+                );
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .focus-button:hover {
+            filter: brightness(1.08);
+        }
+
+        /* =========================================================
+           SPODNÍ OVLÁDÁNÍ
+           ========================================================= */
+
+        .controls {
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--panel);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+            transform: translateX(-50%);
+        }
+
+        .control-button {
+            min-width: 46px;
+            min-height: 40px;
+            padding: 8px 11px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            color: var(--muted);
+            background: transparent;
+            font-size: 12px;
+            font-weight: 750;
+            cursor: pointer;
+        }
+
+        .control-button:hover {
+            color: white;
+            background: var(--panel-light);
+        }
+
+        .control-button.active {
+            color: #062134;
+            background: var(--primary);
+        }
+
+        .control-divider {
+            width: 1px;
+            height: 25px;
+            background: var(--border);
+        }
+
+        /* =========================================================
+           NAČÍTÁNÍ A CHYBY
+           ========================================================= */
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background:
+                radial-gradient(
+                    circle at center,
+                    #0d2345,
+                    #020617 68%
+                );
+        }
+
+        .loading-box {
+            max-width: 430px;
+            text-align: center;
+        }
+
+        .loader {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 20px;
+            border: 4px solid rgba(56, 189, 248, 0.17);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: rotateLoader 0.85s linear infinite;
+        }
+
+        @keyframes rotateLoader {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-title {
+            margin: 0 0 8px;
+            font-size: 20px;
+        }
+
+        .loading-message {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .error-box {
+            max-width: 520px;
+            padding: 24px;
+            border: 1px solid rgba(251, 113, 133, 0.35);
+            border-radius: 18px;
+            text-align: center;
+            background: rgba(48, 14, 26, 0.72);
+        }
+
+        .retry-button {
+            min-height: 42px;
+            margin-top: 15px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            background: var(--primary-dark);
+            font-weight: 750;
+            cursor: pointer;
+        }
+
+        /* =========================================================
+           MOBILNÍ VERZE
+           ========================================================= */
+
+        .mobile-list-button {
+            display: none;
+        }
+
+        @media (max-width: 840px) {
+            .topbar {
+                top: 9px;
+                left: 9px;
+                right: 9px;
+            }
+
+            .brand {
+                min-height: 52px;
+                padding: 8px 12px;
+            }
+
+            .brand-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 11px;
+            }
+
+            .brand h1 {
+                font-size: 15px;
+            }
+
+            .brand p {
+                display: none;
+            }
+
+            .time-panel {
+                padding: 8px 11px;
+            }
+
+            .time-label {
+                display: none;
+            }
+
+            .utc-time {
+                font-size: 11px;
+            }
+
+            .sidebar {
+                top: 72px;
+                left: 9px;
+                bottom: 72px;
+                width: min(345px, calc(100% - 18px));
+                transform: translateX(calc(-100% - 20px));
+                transition: transform 0.23s ease;
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .mobile-list-button {
+                position: fixed;
+                left: 9px;
+                bottom: 17px;
+                z-index: 35;
+                display: block;
+                min-height: 44px;
+                padding: 9px 14px;
+                border: 1px solid var(--border);
+                border-radius: 13px;
+                color: white;
+                background: var(--panel);
+                box-shadow: var(--shadow);
+                backdrop-filter: blur(16px);
+            }
+
+            .detail-panel {
+                top: auto;
+                right: 9px;
+                bottom: 72px;
+                left: 9px;
+                width: auto;
+                max-height: 58vh;
+                overflow-y: auto;
+            }
+
+            .detail-panel.closed {
+                transform: translateY(35px);
+            }
+
+            .controls {
+                bottom: 9px;
+                max-width: calc(100% - 130px);
+                overflow-x: auto;
+                border-radius: 13px;
+            }
+
+            .control-button {
+                min-width: 42px;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="globe"></div>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-icon">🛰️</div>
+
+        <div>
+            <h1>Satellite Tracker</h1>
+            <p>Živé sledování družic kolem Země</p>
+        </div>
+    </div>
+
+    <div class="time-panel">
+        <div class="time-label">Simulovaný čas UTC</div>
+        <div id="utcTime" class="utc-time">
+            Načítání...
+        </div>
+    </div>
+</header>
+
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+        <div class="sidebar-header-row">
+            <h2 class="sidebar-title">
+                Katalog satelitů
+            </h2>
+
+            <span
+                id="satelliteCount"
+                class="satellite-count"
+            >
+                0 objektů
+            </span>
+        </div>
+
+        <div class="search-wrapper">
+            <span class="search-icon">⌕</span>
+
+            <input
+                id="satelliteSearch"
+                class="search-input"
+                type="search"
+                placeholder="Hledat ISS, Tiangong..."
+                autocomplete="off"
+            >
+        </div>
+    </div>
+
+    <div
+        id="satelliteList"
+        class="satellite-list"
+    ></div>
+</aside>
+
+<section
+    id="detailPanel"
+    class="detail-panel closed"
+>
+    <div class="detail-header">
+        <button
+            class="close-button"
+            type="button"
+            aria-label="Zavřít detail"
+            onclick="closeDetail()"
+        >
+            ×
+        </button>
+
+        <div class="detail-icon">🛰️</div>
+
+        <h2
+            id="detailName"
+            class="detail-name"
+        >
+            Satelit
+        </h2>
+
+        <p
+            id="detailId"
+            class="detail-id"
+        ></p>
+    </div>
+
+    <div class="detail-body">
+        <div class="data-grid">
+            <div class="data-card">
+                <div class="data-label">Výška</div>
+                <div id="detailAltitude" class="data-value">
+                    –
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Rychlost</div>
+                <div id="detailSpeed" class="data-value">
+                    –
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Zeměpisná šířka</div>
+                <div id="detailLatitude" class="data-value">
+                    –
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Zeměpisná délka</div>
+                <div id="detailLongitude" class="data-value">
+                    –
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Inklinace</div>
+                <div id="detailInclination" class="data-value">
+                    –
+                </div>
+            </div>
+
+            <div class="data-card">
+                <div class="data-label">Oběžná doba</div>
+                <div id="detailPeriod" class="data-value">
+                    –
+                </div>
+            </div>
+        </div>
+
+        <button
+            class="focus-button"
+            type="button"
+            onclick="focusSelectedSatellite()"
+        >
+            Zaměřit satelit
+        </button>
+    </div>
+</section>
+
+<button
+    class="mobile-list-button"
+    type="button"
+    onclick="toggleMobileSidebar()"
+>
+    ☰ Satelity
+</button>
+
+<nav class="controls">
+    <button
+        id="pauseButton"
+        class="control-button"
+        type="button"
+        onclick="togglePause()"
+    >
+        ⏸
+    </button>
+
+    <div class="control-divider"></div>
+
+    <button
+        class="control-button speed-button active"
+        type="button"
+        data-speed="1"
+        onclick="setTimeSpeed(1)"
+    >
+        ×1
+    </button>
+
+    <button
+        class="control-button speed-button"
+        type="button"
+        data-speed="30"
+        onclick="setTimeSpeed(30)"
+    >
+        ×30
+    </button>
+
+    <button
+        class="control-button speed-button"
+        type="button"
+        data-speed="300"
+        onclick="setTimeSpeed(300)"
+    >
+        ×300
+    </button>
+
+    <button
+        class="control-button speed-button"
+        type="button"
+        data-speed="3000"
+        onclick="setTimeSpeed(3000)"
+    >
+        ×3000
+    </button>
+
+    <div class="control-divider"></div>
+
+    <button
+        class="control-button"
+        type="button"
+        onclick="resetToNow()"
+    >
+        Nyní
+    </button>
+</nav>
+
+<div
+    id="loadingOverlay"
+    class="loading-overlay"
+>
+    <div id="loadingContent" class="loading-box">
+        <div class="loader"></div>
+
+        <h2 class="loading-title">
+            Načítám satelity
+        </h2>
+
+        <p
+            id="loadingMessage"
+            class="loading-message"
+        >
+            Stahuji aktuální orbitální data a počítám polohy.
+        </p>
+    </div>
+</div>
+
+<script type="module">
+    /*
+     * Satellite.js importovaný jako ES modul.
+     */
+    import * as satellite from
+        "https://cdn.jsdelivr.net/npm/satellite.js@7.0.0/+esm";
+
+    /*
+     * ============================================================
+     * NASTAVENÍ
+     * ============================================================
+     */
+
+    const CELESTRAK_URL =
+        "https://celestrak.org/NORAD/elements/gp.php" +
+        "?GROUP=stations&FORMAT=json";
+
+    /*
+     * Výška se v Globe.GL zadává relativně k poloměru Země.
+     * Pro vizuální přehlednost družice mírně zvýrazňujeme.
+     */
+    const EARTH_RADIUS_KM = 6371;
+    const ALTITUDE_VISUAL_SCALE = 1.25;
+
+    const POSITION_UPDATE_INTERVAL = 1000;
+    const ORBIT_MINUTES_BEFORE = 45;
+    const ORBIT_MINUTES_AFTER = 45;
+    const ORBIT_STEP_MINUTES = 2;
+
+    let globe;
+    let satellites = [];
+    let selectedSatellite = null;
+
+    let simulationDate = new Date();
+    let lastRealTimestamp = Date.now();
+    let timeSpeed = 1;
+    let isPaused = false;
+
+    /*
+     * ============================================================
+     * GLOBE
+     * ============================================================
+     */
+
+	function createGlobe() {
+	globe = new Globe(
+	document.getElementById("globe")
+	)
+	.backgroundColor("#020617")
+	.globeImageUrl(
+	"https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg"
+	)
+	.bumpImageUrl(
+	"https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
+	)
+	.showAtmosphere(true)
+	.atmosphereColor("#38bdf8")
+	.atmosphereAltitude(0.18)
+	.showGraticules(true)
+	.pointsData([]);
+	}
+            .bumpImageUrl(
+                "https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
+            )
+            .showAtmosphere(true)
+            .atmosphereColor("#38bdf8")
+            .atmosphereAltitude(0.18)
+            .showGraticules(true)
+            .pointsData([])
+            .pointLat(item => item.lat)
+            .pointLng(item => item.lng)
+            .pointAltitude(item => item.visualAltitude)
+            .pointRadius(item =>
+                selectedSatellite?.id === item.id
+                    ? 0.23
+                    : 0.13
+            )
+            .pointColor(item =>
+                selectedSatellite?.id === item.id
+                    ? "#facc15"
+                    : "#4ade80"
+            )
+            .pointResolution(10)
+            .pointLabel(createSatelliteLabel)
+            .onPointClick(item => {
+                selectSatellite(item.id);
+            })
+            .pathsData([])
+            .pathPoints(path => path.points)
+            .pathPointLat(point => point.lat)
+            .pathPointLng(point => point.lng)
+            .pathPointAlt(point => point.alt)
+            .pathColor(() => "#facc15")
+            .pathStroke(1.25)
+            .pathDashLength(0.08)
+            .pathDashGap(0.035)
+            .pathDashAnimateTime(3200)
+            .pathTransitionDuration(0);
+
+        globe.pointOfView(
+            {
+                lat: 20,
+                lng: 10,
+                altitude: 2.15
+            },
+            0
+        );
+
+        const controls = globe.controls();
+
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.25;
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+
+        window.addEventListener("resize", resizeGlobe);
+        resizeGlobe();
+    }
+
+    function resizeGlobe() {
+        globe
+            .width(window.innerWidth)
+            .height(window.innerHeight);
+    }
+
+    /*
+     * ============================================================
+     * NAČTENÍ ORBITÁLNÍCH DAT
+     * ============================================================
+     */
+
+    async function loadSatelliteData() {
+        showLoading(
+            "Stahuji aktuální orbitální data z CelesTrak."
+        );
+
+        try {
+            const response = await fetch(
+                CELESTRAK_URL,
+                {
+                    cache: "no-store"
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    `Datový server vrátil chybu ${response.status}.`
+                );
+            }
+
+            const orbitalElements = await response.json();
+
+            if (
+                !Array.isArray(orbitalElements) ||
+                orbitalElements.length === 0
+            ) {
+                throw new Error(
+                    "Datový server nevrátil žádné satelity."
+                );
+            }
+
+            satellites = orbitalElements
+                .map(createSatelliteRecord)
+                .filter(Boolean);
+
+            if (satellites.length === 0) {
+                throw new Error(
+                    "Orbitální data nebylo možné zpracovat."
+                );
+            }
+
+            updateSatellitePositions();
+            renderSatelliteList();
+
+            document
+                .getElementById("satelliteCount")
+                .textContent =
+                    `${satellites.length} objektů`;
+
+            hideLoading();
+
+        } catch (error) {
+            console.error(error);
+            showLoadingError(error.message);
+        }
+    }
+
+    function createSatelliteRecord(ommData) {
+        try {
+            const satrec =
+                satellite.json2satrec(ommData);
+
+            if (!satrec || satrec.error) {
+                return null;
+            }
+
+            const meanMotion =
+                Number(ommData.MEAN_MOTION || 0);
+
+            const periodMinutes =
+                meanMotion > 0
+                    ? 1440 / meanMotion
+                    : 0;
+
+            return {
+                id: String(
+                    ommData.NORAD_CAT_ID ||
+                    ommData.OBJECT_ID ||
+                    crypto.randomUUID()
+                ),
+
+                name:
+                    ommData.OBJECT_NAME ||
+                    "Neznámý objekt",
+
+                objectId:
+                    ommData.OBJECT_ID || "",
+
+                noradId:
+                    ommData.NORAD_CAT_ID || "",
+
+                classification:
+                    ommData.CLASSIFICATION_TYPE || "",
+
+                inclination:
+                    Number(ommData.INCLINATION || 0),
+
+                periodMinutes,
+
+                satrec,
+
+                lat: 0,
+                lng: 0,
+                altitudeKm: 0,
+                speedKmS: 0,
+                visualAltitude: 0,
+                validPosition: false
+            };
+        } catch (error) {
+            console.warn(
+                "Nepodařilo se zpracovat satelit:",
+                ommData?.OBJECT_NAME,
+                error
+            );
+
+            return null;
+        }
+    }
+
+    /*
+     * ============================================================
+     * VÝPOČET POLOHY
+     * ============================================================
+     */
+
+    function calculatePosition(item, date) {
+        try {
+            const propagated =
+                satellite.propagate(item.satrec, date);
+
+            if (
+                !propagated ||
+                !propagated.position ||
+                typeof propagated.position === "boolean"
+            ) {
+                return null;
+            }
+
+            const positionEci = propagated.position;
+            const velocityEci = propagated.velocity;
+
+            const gmst = satellite.gstime(date);
+
+            const positionGeodetic =
+                satellite.eciToGeodetic(
+                    positionEci,
+                    gmst
+                );
+
+            const latitude =
+                satellite.degreesLat(
+                    positionGeodetic.latitude
+                );
+
+            const longitude =
+                satellite.degreesLong(
+                    positionGeodetic.longitude
+                );
+
+            const altitudeKm =
+                positionGeodetic.height;
+
+            let speedKmS = 0;
+
+            if (
+                velocityEci &&
+                typeof velocityEci !== "boolean"
+            ) {
+                speedKmS = Math.sqrt(
+                    velocityEci.x ** 2 +
+                    velocityEci.y ** 2 +
+                    velocityEci.z ** 2
+                );
+            }
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(altitudeKm)
+            ) {
+                return null;
+            }
+
+            return {
+                lat: latitude,
+                lng: longitude,
+                altitudeKm,
+                speedKmS,
+
+                visualAltitude:
+                    Math.max(
+                        0.018,
+                        altitudeKm /
+                        EARTH_RADIUS_KM *
+                        ALTITUDE_VISUAL_SCALE
+                    )
+            };
+
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function updateSatellitePositions() {
+        satellites.forEach(item => {
+            const position =
+                calculatePosition(
+                    item,
+                    simulationDate
+                );
+
+            if (!position) {
+                item.validPosition = false;
+                return;
+            }
+
+            Object.assign(item, position);
+            item.validPosition = true;
+        });
+
+        const visibleSatellites =
+            satellites.filter(item => item.validPosition);
+
+        /*
+         * Nové pole zajistí překreslení Globe.GL.
+         */
+        globe.pointsData([...visibleSatellites]);
+
+        if (selectedSatellite) {
+            selectedSatellite =
+                satellites.find(
+                    item =>
+                        item.id === selectedSatellite.id
+                ) || null;
+
+            if (selectedSatellite) {
+                updateDetailPanel();
+                updateSelectedOrbit();
+            }
+        }
+
+        renderSatelliteList();
+        updateUtcTime();
+    }
+
+    /*
+     * ============================================================
+     * DRÁHA VYBRANÉHO SATELITU
+     * ============================================================
+     */
+
+    function createOrbitPath(item) {
+        const points = [];
+
+        for (
+            let minute = -ORBIT_MINUTES_BEFORE;
+            minute <= ORBIT_MINUTES_AFTER;
+            minute += ORBIT_STEP_MINUTES
+        ) {
+            const orbitDate =
+                new Date(
+                    simulationDate.getTime() +
+                    minute * 60 * 1000
+                );
+
+            const position =
+                calculatePosition(
+                    item,
+                    orbitDate
+                );
+
+            if (!position) {
+                continue;
+            }
+
+            /*
+             * Přerušení při přechodu přes datovou hranici.
+             * Tím se zabrání čáře přes celý glóbus.
+             */
+            const previousPoint =
+                points.at(-1);
+
+            if (
+                previousPoint &&
+                Math.abs(
+                    previousPoint.lng -
+                    position.lng
+                ) > 180
+            ) {
+                points.push({
+                    lat: position.lat,
+                    lng: position.lng,
+                    alt: position.visualAltitude,
+                    breakPoint: true
+                });
+            } else {
+                points.push({
+                    lat: position.lat,
+                    lng: position.lng,
+                    alt: position.visualAltitude
+                });
+            }
+        }
+
+        /*
+         * Rozdělení trasy v místě datové hranice.
+         */
+        const pathGroups = [];
+        let currentGroup = [];
+
+        points.forEach(point => {
+            if (
+                point.breakPoint &&
+                currentGroup.length > 0
+            ) {
+                pathGroups.push(currentGroup);
+                currentGroup = [];
+            }
+
+            currentGroup.push(point);
+        });
+
+        if (currentGroup.length > 0) {
+            pathGroups.push(currentGroup);
+        }
+
+        return pathGroups
+            .filter(group => group.length > 1)
+            .map(group => ({
+                satelliteId: item.id,
+                points: group
+            }));
+    }
+
+    function updateSelectedOrbit() {
+        if (!selectedSatellite) {
+            globe.pathsData([]);
+            return;
+        }
+
+        const paths =
+            createOrbitPath(selectedSatellite);
+
+        globe.pathsData(paths);
+    }
+
+    /*
+     * ============================================================
+     * SEZNAM SATELITŮ
+     * ============================================================
+     */
+
+    function renderSatelliteList() {
+        const list =
+            document.getElementById("satelliteList");
+
+        const searchText =
+            document
+                .getElementById("satelliteSearch")
+                .value
+                .trim()
+                .toLocaleLowerCase("cs");
+
+        const filteredSatellites = satellites
+            .filter(item => {
+                const searchableText = [
+                    item.name,
+                    item.noradId,
+                    item.objectId
+                ]
+                    .join(" ")
+                    .toLocaleLowerCase("cs");
+
+                return searchableText.includes(searchText);
+            })
+            .sort((first, second) =>
+                first.name.localeCompare(
+                    second.name,
+                    "cs"
+                )
+            );
+
+        document
+            .getElementById("satelliteCount")
+            .textContent =
+                `${filteredSatellites.length} objektů`;
+
+        if (filteredSatellites.length === 0) {
+            list.innerHTML = `
+                <div style="
+                    padding: 30px 15px;
+                    color: #94a3b8;
+                    text-align: center;
+                    font-size: 13px;
+                    line-height: 1.5;
+                ">
+                    Pro zadané hledání nebyl nalezen žádný satelit.
+                </div>
+            `;
+
+            return;
+        }
+
+        list.innerHTML = filteredSatellites
+            .map(item => {
+                const isActive =
+                    selectedSatellite?.id === item.id;
+
+                const altitude =
+                    item.validPosition
+                        ? `${Math.round(item.altitudeKm)
+                            .toLocaleString("cs-CZ")} km`
+                        : "Bez polohy";
+
+                return `
+                    <button
+                        class="satellite-item
+                        ${isActive ? "active" : ""}"
+                        type="button"
+                        data-id="${escapeHtml(item.id)}"
+                    >
+                        <span class="satellite-item-icon">
+                            🛰️
+                        </span>
+
+                        <span>
+                            <span class="satellite-name">
+                                ${escapeHtml(item.name)}
+                            </span>
+
+                            <span class="satellite-meta">
+                                NORAD ${escapeHtml(
+                                    item.noradId || "–"
+                                )}
+                            </span>
+                        </span>
+
+                        <span class="satellite-altitude">
+                            ${escapeHtml(altitude)}
+                        </span>
+                    </button>
+                `;
+            })
+            .join("");
+
+        list
+            .querySelectorAll(".satellite-item")
+            .forEach(button => {
+                button.addEventListener(
+                    "click",
+                    () => {
+                        selectSatellite(
+                            button.dataset.id
+                        );
+                    }
+                );
+            });
+    }
+
+    document
+        .getElementById("satelliteSearch")
+        .addEventListener(
+            "input",
+            renderSatelliteList
+        );
+
+    /*
+     * ============================================================
+     * VÝBĚR A DETAIL
+     * ============================================================
+     */
+
+    window.selectSatellite = function(id) {
+        selectedSatellite =
+            satellites.find(item => item.id === id);
+
+        if (!selectedSatellite) {
+            return;
+        }
+
+        document
+            .getElementById("detailPanel")
+            .classList.remove("closed");
+
+        updateDetailPanel();
+        updateSelectedOrbit();
+        focusSelectedSatellite();
+
+        /*
+         * Obnovíme barvu a velikost bodů.
+         */
+        globe.pointsData(
+            satellites.filter(
+                item => item.validPosition
+            )
+        );
+
+        renderSatelliteList();
+
+        if (window.innerWidth <= 840) {
+            document
+                .getElementById("sidebar")
+                .classList.remove("mobile-open");
+        }
+    };
+
+    function updateDetailPanel() {
+        if (!selectedSatellite) {
+            return;
+        }
+
+        document.getElementById("detailName").textContent =
+            selectedSatellite.name;
+
+        document.getElementById("detailId").textContent =
+            [
+                selectedSatellite.objectId,
+                selectedSatellite.noradId
+                    ? `NORAD ${selectedSatellite.noradId}`
+                    : ""
+            ]
+                .filter(Boolean)
+                .join(" • ");
+
+        document.getElementById("detailAltitude").textContent =
+            Number.isFinite(selectedSatellite.altitudeKm)
+                ? `${selectedSatellite.altitudeKm
+                    .toLocaleString("cs-CZ", {
+                        maximumFractionDigits: 1
+                    })} km`
+                : "–";
+
+        document.getElementById("detailSpeed").textContent =
+            Number.isFinite(selectedSatellite.speedKmS)
+                ? `${selectedSatellite.speedKmS
+                    .toLocaleString("cs-CZ", {
+                        maximumFractionDigits: 2
+                    })} km/s`
+                : "–";
+
+        document.getElementById("detailLatitude").textContent =
+            formatCoordinate(
+                selectedSatellite.lat,
+                "N",
+                "S"
+            );
+
+        document.getElementById("detailLongitude").textContent =
+            formatCoordinate(
+                selectedSatellite.lng,
+                "E",
+                "W"
+            );
+
+        document.getElementById("detailInclination").textContent =
+            Number.isFinite(selectedSatellite.inclination)
+                ? `${selectedSatellite.inclination
+                    .toLocaleString("cs-CZ", {
+                        maximumFractionDigits: 2
+                    })}°`
+                : "–";
+
+        document.getElementById("detailPeriod").textContent =
+            selectedSatellite.periodMinutes > 0
+                ? `${selectedSatellite.periodMinutes
+                    .toLocaleString("cs-CZ", {
+                        maximumFractionDigits: 1
+                    })} min`
+                : "–";
+    }
+
+    window.focusSelectedSatellite = function() {
+        if (
+            !selectedSatellite ||
+            !selectedSatellite.validPosition
+        ) {
+            return;
+        }
+
+        globe.controls().autoRotate = false;
+
+        globe.pointOfView(
+            {
+                lat: selectedSatellite.lat,
+                lng: selectedSatellite.lng,
+                altitude: 1.45
+            },
+            1100
+        );
+    };
+
+    window.closeDetail = function() {
+        selectedSatellite = null;
+
+        document
+            .getElementById("detailPanel")
+            .classList.add("closed");
+
+        globe.pathsData([]);
+
+        globe.pointsData(
+            satellites.filter(
+                item => item.validPosition
+            )
+        );
+
+        renderSatelliteList();
+    };
+
+    /*
+     * ============================================================
+     * ČASOVÁ SIMULACE
+     * ============================================================
+     */
+
+    function updateSimulationTime() {
+        const currentRealTimestamp = Date.now();
+
+        const realElapsedMs =
+            currentRealTimestamp - lastRealTimestamp;
+
+        lastRealTimestamp = currentRealTimestamp;
+
+        if (!isPaused) {
+            simulationDate =
+                new Date(
+                    simulationDate.getTime() +
+                    realElapsedMs * timeSpeed
+                );
+        }
+
+        updateUtcTime();
+    }
+
+    window.setTimeSpeed = function(speed) {
+        timeSpeed = speed;
+        isPaused = false;
+
+        document.getElementById("pauseButton").textContent =
+            "⏸";
+
+        document
+            .querySelectorAll(".speed-button")
+            .forEach(button => {
+                button.classList.toggle(
+                    "active",
+                    Number(button.dataset.speed) === speed
+                );
+            });
+    };
+
+    window.togglePause = function() {
+        isPaused = !isPaused;
+
+        document.getElementById("pauseButton").textContent =
+            isPaused ? "▶" : "⏸";
+    };
+
+    window.resetToNow = function() {
+        simulationDate = new Date();
+        timeSpeed = 1;
+        isPaused = false;
+        lastRealTimestamp = Date.now();
+
+        document.getElementById("pauseButton").textContent =
+            "⏸";
+
+        document
+            .querySelectorAll(".speed-button")
+            .forEach(button => {
+                button.classList.toggle(
+                    "active",
+                    Number(button.dataset.speed) === 1
+                );
+            });
+
+        updateSatellitePositions();
+    };
+
+    function updateUtcTime() {
+        document.getElementById("utcTime").textContent =
+            new Intl.DateTimeFormat(
+                "cs-CZ",
+                {
+                    timeZone: "UTC",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false
+                }
+            ).format(simulationDate) + " UTC";
+    }
+
+    /*
+     * ============================================================
+     * MOBILNÍ MENU
+     * ============================================================
+     */
+
+    window.toggleMobileSidebar = function() {
+        document
+            .getElementById("sidebar")
+            .classList.toggle("mobile-open");
+    };
+
+    /*
+     * ============================================================
+     * POPISKY
+     * ============================================================
+     */
+
+    function createSatelliteLabel(item) {
+        return `
+            <div style="
+                padding: 8px 10px;
+                color: white;
+                font-family: Arial, sans-serif;
+            ">
+                <div style="
+                    margin-bottom: 4px;
+                    font-weight: 700;
+                ">
+                    ${escapeHtml(item.name)}
+                </div>
+
+                <div style="
+                    color: #a8c5dd;
+                    font-size: 11px;
+                ">
+                    Výška:
+                    ${Math.round(item.altitudeKm)
+                        .toLocaleString("cs-CZ")} km
+                    <br>
+                    Rychlost:
+                    ${item.speedKmS
+                        .toLocaleString("cs-CZ", {
+                            maximumFractionDigits: 2
+                        })} km/s
+                </div>
+            </div>
+        `;
+    }
+
+    function formatCoordinate(
+        value,
+        positiveDirection,
+        negativeDirection
+    ) {
+        if (!Number.isFinite(value)) {
+            return "–";
+        }
+
+        const direction =
+            value >= 0
+                ? positiveDirection
+                : negativeDirection;
+
+        return (
+            Math.abs(value).toLocaleString(
+                "cs-CZ",
+                {
+                    maximumFractionDigits: 2
+                }
+            ) +
+            "° " +
+            direction
+        );
+    }
+
+    /*
+     * ============================================================
+     * NAČÍTÁNÍ
+     * ============================================================
+     */
+
+    function showLoading(message) {
+        const overlay =
+            document.getElementById("loadingOverlay");
+
+        const content =
+            document.getElementById("loadingContent");
+
+        content.className = "loading-box";
+
+        content.innerHTML = `
+            <div class="loader"></div>
+
+            <h2 class="loading-title">
+                Načítám satelity
+            </h2>
+
+            <p class="loading-message">
+                ${escapeHtml(message)}
+            </p>
+        `;
+
+        overlay.classList.remove("hidden");
+    }
+
+    function hideLoading() {
+        document
+            .getElementById("loadingOverlay")
+            .classList.add("hidden");
+    }
+
+    function showLoadingError(message) {
+        const content =
+            document.getElementById("loadingContent");
+
+        content.className = "error-box";
+
+        content.innerHTML = `
+            <div style="font-size: 38px; margin-bottom: 12px;">
+                ⚠️
+            </div>
+
+            <h2 style="margin: 0 0 9px;">
+                Data se nepodařilo načíst
+            </h2>
+
+            <p style="
+                margin: 0;
+                color: #fda4af;
+                font-size: 13px;
+                line-height: 1.55;
+            ">
+                ${escapeHtml(message)}
+            </p>
+
+            <p style="
+                margin: 12px 0 0;
+                color: #94a3b8;
+                font-size: 12px;
+                line-height: 1.5;
+            ">
+                Může jít o dočasné omezení datového serveru
+                nebo blokování požadavku z prohlížeče.
+            </p>
+
+            <button
+                id="retryButton"
+                class="retry-button"
+                type="button"
+            >
+                Zkusit znovu
+            </button>
+        `;
+
+        document
+            .getElementById("retryButton")
+            .addEventListener(
+                "click",
+                loadSatelliteData
+            );
+    }
+
+    /*
+     * ============================================================
+     * BEZPEČNÉ HTML
+     * ============================================================
+     */
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    /*
+     * ============================================================
+     * SPUŠTĚNÍ
+     * ============================================================
+     */
+
+    createGlobe();
+    updateUtcTime();
+    loadSatelliteData();
+
+    setInterval(
+        updateSimulationTime,
+        250
+    );
+
+    setInterval(
+        updateSatellitePositions,
+        POSITION_UPDATE_INTERVAL
+    );
+</script>
+
+</body>
+</html>
