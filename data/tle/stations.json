@@ -1,0 +1,18 @@
+{
+  "generated": "2026-09-30T13:19:04.842679+00:00",
+  "source": "seed (synthetic, physically-plausible placeholder \u2014 see scripts/update_tle.py for live CelesTrak data)",
+  "satellites": [
+    {
+      "name": "ISS (ZARYA)",
+      "noradId": 25544,
+      "tle1": "1 25544U 26001A   26273.55491716  .00000000  00000-0  10000-3 0  9991",
+      "tle2": "2 25544  51.6400  59.2000 0004000  90.0000 270.0000 15.49564201400018"
+    },
+    {
+      "name": "CSS (TIANHE)",
+      "noradId": 48274,
+      "tle1": "1 48274U 26001A   26273.55491716  .00000000  00000-0  10000-3 0  9996",
+      "tle2": "2 48274  41.4700 120.5000 0006000  45.0000 315.0000 15.59190035200027"
+    }
+  ]
+}
