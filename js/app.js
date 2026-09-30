@@ -68,13 +68,16 @@
     zoomControl: true,
   }).setView([20, 0], 2);
 
+  // Esri's "World Dark Gray Base" — free, keyless raster tiles.
+  // (Switched from CARTO's dark_all tiles, which started requiring a
+  // paid/free-tier API key in Aug 2026 and show an "API KEY REQUIRED"
+  // watermark otherwise — see https://carto.com/basemaps/apikey/)
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 8,
+        'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 16,
     }
   ).addTo(map);
 
