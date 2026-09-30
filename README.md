@@ -1,9 +1,6 @@
 # 🛰️ Satellite Tracker
 
-Živé sledování satelitů v reálném čase — inspirováno [satellite-tracer.vercel.app](https://satellite-tracer.vercel.app/).
-Čistě statická webová aplikace (HTML + CSS + vanilla JS), takže ji stačí nahrát na GitHub a hostovat
-zdarma přes **GitHub Pages** — žádný build krok, žádný server není potřeba.
-
+Živé sledování satelitů v reálném čase 
 ![preview](https://img.shields.io/badge/status-demo-4fd1ff)
 
 ## ✨ Co appka umí
